@@ -483,7 +483,7 @@ function expandAll() {
 function showAll(str) {
     let matching_ids = document.querySelectorAll('[id^="search_id_"]')
     for (let id of matching_ids) {
-        id.style.display = "inline-block";
+        id.style.display = "";
     }
 }
 
@@ -493,7 +493,7 @@ function showOnly(str) {
     for (let id of matching_ids) {
         name = id.id.replace("search_id_", "").toLowerCase();
         if (name.includes(str) || id.textContent.toLowerCase().includes(str)) {
-            id.style.display = "inline-block";
+            id.style.display = "";
         } else {
             id.style.display = "none";
 	}

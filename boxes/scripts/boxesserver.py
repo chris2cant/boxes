@@ -247,8 +247,8 @@ class BServer:
 <div style="float: left;">
 <a href="./{langparam}"><h1>{_("Boxes.py")}</h1></a>
 </div>
-<div style="width: 120px; float: right;">
-<img alt="self-Logo" src="{self.static_url}/boxes-logo.svg" width="120">
+<div class="page_header_logo page_header_logo_compact">
+<img alt="self-Logo" src="{self.static_url}/boxes-logo.svg">
 </div>
 <div>
 <div class="clear"></div>
@@ -344,13 +344,13 @@ class BServer:
 </head>
 <body onload="initPage()">
 <div class="container">
-<div style="width: 75%; float: left;">
 {self.genPagePartHeader(lang)}
+<div class="page_main">
 <div class="modenav">
 <span class="modebutton"><a href="Gallery">{_("Gallery")}</a></span>
 <span class="modebutton modeactive">{_("Menu")}</span>
 </div>
-<br>
+<hr>
 <div class="menu" style="width: 100%">
 <img style="width: 200px;" id="sample-preview" src="{self.static_url}/nothing.png" alt="">
 """]
@@ -376,10 +376,6 @@ class BServer:
             result.append("   </ul>\n  </div>\n")
         result.append(f"""
 </div>
-
-<div style="width: 5%; float: left;"></div>
-<div class="clear"></div>
-<hr>
 </div>
 </div>
 </body>
@@ -447,6 +443,8 @@ class BServer:
             langparam = "?language=" + lang_name
 
         return f"""
+<div class="page_header">
+<div class="page_header_text">
 <h1><a href="./{langparam}">{_("Boxes.py")}</a></h1>
 <p>{_("Create boxes and more with a laser cutter!")}</p>
 <p>
@@ -455,11 +453,10 @@ class BServer:
 </p>
 </div>
 
-<div style="width: 25%; float: left;">
-<img alt="self-Logo" src="{self.static_url}/boxes-logo.svg" width="250">
+<div class="page_header_logo">
+<img alt="self-Logo" src="{self.static_url}/boxes-logo.svg">
 </div>
-
-<div>
+</div>
 
 <div class="clear"></div>
 <hr/>
@@ -590,15 +587,17 @@ class BServer:
 </head>
 <body onload="initPage()">
 <div class="container">
-<div style="width: 75%; float: left;">
 {self.genPagePartHeader(lang)}
+<div class="page_main">
 <div class="modenav">
 <span class="modebutton modeactive">{_("Gallery")}</span>
 <span class="modebutton"><a href="Menu">{_("Menu")}</a></span>
 </div>
+<hr>
 """]
         for nr, group in enumerate(self.groups):
             result.append(f"<h2>{_(group.title)}</h2>\n")
+            result.append('<div class="gallery_grid">\n')
             for box in group.generators:
                 name = box.__name__
                 fn = f"samples/{name}-thumb.jpg"
@@ -607,13 +606,14 @@ class BServer:
                 alt = f"{_(name)}"
                 href = f"{name}{langparam}"
                 if not os.path.exists(static_filename):
-                    result.append(f"""  <span class="gallery_missing" id="search_id_{name}"><a href="{href}">{_(box.__doc__)}<br><br>{_(name)}</a></span>\n""")
+                    result.append(f"""  <span class="gallery_missing" id="search_id_{name}"><a title="{_(name)} - {html.escape(_(box.__doc__))}" href="{href}"><span class="gallery_media"></span><span class="gallery_caption">{_(name)}</span></a></span>\n""")
                 else:
-                    result.append(f"""  <span class="gallery" id="search_id_{name}"><a title="{_(name)} - {html.escape(_(box.__doc__))}" href="{href}"><img alt="{alt}" src="{thumbnail}"><br>{_(name)}</a></span>\n""")
+                    result.append(f"""  <span class="gallery" id="search_id_{name}"><a title="{_(name)} - {html.escape(_(box.__doc__))}" href="{href}"><span class="gallery_media"><img class="gallery_media_bg" alt="" aria-hidden="true" src="{thumbnail}"><img class="gallery_media_fg" alt="{alt}" src="{thumbnail}"></span><span class="gallery_caption">{_(name)}</span></a></span>\n""")
+            result.append('</div>\n')
 
         result.append(f"""
-</div><div style="width: 5%; float: left;"></div>
-        <div class="clear"></div><hr></div>
+</div>
+</div>
 </body>
 </html>
 """
