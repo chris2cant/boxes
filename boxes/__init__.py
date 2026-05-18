@@ -270,8 +270,8 @@ class ArgparseEdgeType:
                 )
             )
         title_attr = ' title="{}"'.format(html.escape(select_title)) if select_title else ""
-        return '<select class="field-control field-control--select" name="{}" id="{}" aria-labeledby="{} {}" size="1"{title}>\n{options}\n</select>\n'.format(
-            name, name, name + "_id", name + "_description",
+        return '<select class="field-control field-control--select" name="{}" id="{}" aria-labelledby="{} {}" size="1"{title}>\n{options}\n</select>\n'.format(
+            html.escape(name), html.escape(name), name + "_id", name + "_description",
             title=title_attr,
             options="\n".join(options),
         )
@@ -294,11 +294,16 @@ class BoolArg:
         if isinstance(default, (str)):
             default = self(default)
         checked = ' checked="checked"' if default else ""
-        return """<label class="field-cell--checkbox-label">
-<input name="%s" type="hidden" value="0">
-<input name="%s" id="%s" class="field-cell--checkbox__input" aria-labeledby="%s %s" type="checkbox" value="1"%s>
-<span class="field-cell--checkbox__box" aria-hidden="true"></span>
-</label>""" % (name, name, name, name + "_id", name + "_description", checked)
+        esc_name = html.escape(name)
+        labeledby = html.escape("{} {}".format(name + "_id", name + "_description"))
+        return (
+            '<label class="field-cell--checkbox-label">'
+            f'<input name="{esc_name}" type="hidden" value="0">'
+            f'<input name="{esc_name}" id="{esc_name}" class="field-cell--checkbox__input" '
+            f'aria-labelledby="{labeledby}" type="checkbox" value="1"{checked}>'
+            '<span class="field-cell--checkbox__box" aria-hidden="true"></span>'
+            '</label>'
+        )
 
 boolarg = BoolArg()
 
