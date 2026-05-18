@@ -424,11 +424,11 @@ class BServer:
 
         html_option = ""
         for language in languages:
-            html_option += f"\t\t\t\t<option value='{language}'{' selected' if language == current_language else ''}>{language}</option>\n"
+            html_option += f"\t\t\t\t<option value='{language}'{' selected' if language == current_language else ''}>{language.upper()}</option>\n"
 
         return """
         <form>
-            <select name="language" onchange='if(this.value != \"""" + current_language + """\") { this.form.submit(); }'>
+            \U0001f310 <select name="language" title="Language" onchange='if(this.value != \"""" + current_language + """\") { this.form.submit(); }'>
 """ + html_option + """
             </select>
         </form>
