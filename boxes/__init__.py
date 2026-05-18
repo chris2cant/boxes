@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import html
 import datetime
 import gettext
 import inspect
@@ -253,11 +254,27 @@ class ArgparseEdgeType:
         return pattern
 
     def html(self, name, default, translate):
-        options = "\n".join(
-            """<option value="%s"%s>%s</option>""" %
-             (e, ' selected="selected"' if e == default else "",
-              translate("{} {}".format(e, self.names.get(e, "")))) for e in self.edges)
-        return """<select name="{}" id="{}" aria-labeledby="{} {}" size="1">\n{}</select>\n""".format(name,  name, name+"_id", name+"_description", options)
+        options = []
+        select_title = ""
+        for e in self.edges:
+            desc = translate("{} {}".format(e, self.names.get(e, "")))
+            selected = e == default
+            if selected:
+                select_title = desc
+            options.append(
+                '<option value="{}" title="{}"{}>{}</option>'.format(
+                    html.escape(e),
+                    html.escape(desc),
+                    ' selected="selected"' if selected else "",
+                    html.escape(e),
+                )
+            )
+        title_attr = ' title="{}"'.format(html.escape(select_title)) if select_title else ""
+        return '<select class="field-control field-control--select" name="{}" id="{}" aria-labeledby="{} {}" size="1"{title}>\n{options}\n</select>\n'.format(
+            name, name, name + "_id", name + "_description",
+            title=title_attr,
+            options="\n".join(options),
+        )
 
     def inx(self, name, viewname, arg):
         return ('        <param name="%s" type="optiongroup" appearance="combo" gui-text="%s" gui-description=%s>\n' %
@@ -276,9 +293,12 @@ class BoolArg:
     def html(self, name, default, _):
         if isinstance(default, (str)):
             default = self(default)
-        return """<input name="%s" type="hidden" value="0">
-<input name="%s" id="%s" aria-labeledby="%s %s" type="checkbox" value="1"%s>""" % \
-            (name, name, name, name+"_id", name+"_description",' checked="checked"' if default else "")
+        checked = ' checked="checked"' if default else ""
+        return """<label class="field-cell--checkbox-label">
+<input name="%s" type="hidden" value="0">
+<input name="%s" id="%s" class="field-cell--checkbox__input" aria-labeledby="%s %s" type="checkbox" value="1"%s>
+<span class="field-cell--checkbox__box" aria-hidden="true"></span>
+</label>""" % (name, name, name, name + "_id", name + "_description", checked)
 
 boolarg = BoolArg()
 

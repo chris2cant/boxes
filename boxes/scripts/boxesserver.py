@@ -186,6 +186,58 @@ class BServer:
         except OSError:
             return gettext.translation('boxes.py', languages=langs, fallback=True)
 
+    @staticmethod
+    def capitalize_description(text: str) -> str:
+        for i, ch in enumerate(text):
+            if ch.isalpha():
+                return text[:i] + ch.upper() + text[i + 1:]
+        return text
+
+    def format_help_html(self, help_text: str, _) -> str:
+        if not help_text:
+            return ""
+        content = markdown.markdown(self.capitalize_description(_(help_text)))
+        doc_label = html.escape(_("Documentation"))
+        content = re.sub(
+            r'<a href="(https://florianfesti\.github\.io/boxes/html/usermanual[^"]*)">[^<]*</a>',
+            rf'<a class="doc-link" href="\1" target="_blank" rel="noopener noreferrer" aria-label="{doc_label}"></a>',
+            content,
+        )
+        return content
+
+    def choice_option_label(self, label: str, max_len: int = 24) -> tuple[str, str | None]:
+        if len(label) <= max_len:
+            return label, None
+        return label[:22] + "…", label
+
+    def is_boolarg_type(self, arg_type) -> bool:
+        return isinstance(arg_type, boxes.BoolArg)
+
+    def format_checkbox_html(self, name: str, default, labeledby: str) -> str:
+        if isinstance(default, str):
+            default = boxes.boolarg(default)
+        checked = ' checked="checked"' if default else ""
+        return (
+            f'<label class="field-cell--checkbox-label">'
+            f'<input name="{html.escape(name)}" type="hidden" value="0">'
+            f'<input name="{html.escape(name)}" id="{html.escape(name)}" '
+            f'class="field-cell--checkbox__input" aria-labeledby="{labeledby}" '
+            f'type="checkbox" value="1"{checked}>'
+            f'<span class="field-cell--checkbox__box" aria-hidden="true"></span>'
+            f'</label>'
+        )
+
+    def field_cell_class(self, a) -> str:
+        if isinstance(a, argparse._StoreAction) and self.is_boolarg_type(a.type):
+            return "field-cell field-cell--checkbox"
+        if isinstance(a, argparse._StoreAction) and hasattr(a.type, "html"):
+            return "field-cell field-cell--select"
+        if a.choices:
+            return "field-cell field-cell--select"
+        if a.type == str and a.default and "\n" in a.default:
+            return "field-cell field-cell--textarea"
+        return "field-cell field-cell--text"
+
     def arg2html(self, a, prefix, defaults={}, _=lambda s: s):
         name = a.option_strings[0].replace("-", "")
         if isinstance(a, argparse._HelpAction):
@@ -195,30 +247,54 @@ class BServer:
             viewname = name[len(prefix) + 1:]
 
         default = defaults.get(name, None)
-        row = """<tr><td id="%s"><label for="%s">%s</label></td><td>%%s</td><td id="%s">%s</td></tr>\n""" % \
-              (name + "_id", name, _(viewname), name + "_description", "" if not a.help else markdown.markdown(_(a.help)))
-        if (isinstance(a, argparse._StoreAction) and
-                hasattr(a.type, "html")):
+        cell_class = self.field_cell_class(a)
+        label = html.escape(self.capitalize_description(_(viewname)))
+        row = (
+            """<tr><td id="%s"><label for="%s">%s</label></td>"""
+            """<td class="field-row"><span class="%s">%%s</span>"""
+            """<span class="field-description" id="%s">%s</span></td></tr>\n"""
+        ) % (name + "_id", name, label, cell_class, name + "_description", self.format_help_html(a.help or "", _))
+        if isinstance(a, argparse._StoreAction) and self.is_boolarg_type(a.type):
+            value = default if default is not None else a.default
+            input = self.format_checkbox_html(name, value, f"{name}_id {name}_description")
+        elif isinstance(a, argparse._StoreAction) and hasattr(a.type, "html"):
             input = a.type.html(name, default or a.default, _)
         elif a.type == str and "\n" in a.default:
             val = (default or a.default).split("\n")
-            input = """<textarea name="%s" id="%s" aria-labeledby="%s %s" cols="%s" rows="%s">%s</textarea>""" % \
+            input = """<textarea class="field-control field-control--textarea" name="%s" id="%s" aria-labeledby="%s %s" cols="%s" rows="%s">%s</textarea>""" % \
                     (name, name, name + "_id", name + "_description", max(len(l) for l in val) + 10, len(val) + 1, default or a.default)
         elif a.choices:
-            options = "\n".join(
-                """    <option value="%s"%s>%s</option>""" %
-                (e, ' selected="selected"' if (e == (default or a.default)) or (str(e) == str(default or a.default)) else "",
-                 _(e)) for e in a.choices)
-            input = """<select name="{}" id="{}" aria-labeledby="{} {}" size="1">\n{}</select>\n""".format(name, name, name + "_id", name + "_description", options)
+            option_lines = []
+            for e in a.choices:
+                full_label = _(e)
+                display_label, title = self.choice_option_label(full_label)
+                selected = (e == (default or a.default)) or (str(e) == str(default or a.default))
+                title_attr = f' title="{html.escape(title)}"' if title else ""
+                selected_attr = ' selected="selected"' if selected else ""
+                option_lines.append(
+                    f'    <option value="{html.escape(str(e))}"{title_attr}{selected_attr}'
+                    f'>{html.escape(display_label)}</option>'
+                )
+            options = "\n".join(option_lines)
+            input = """<select class="field-control field-control--select" name="{}" id="{}" aria-labeledby="{} {}" size="1">\n{}</select>\n""".format(name, name, name + "_id", name + "_description", options)
         else:
-            input = """<input name="%s" id="%s" aria-labeledby="%s %s" type="text" value="%s">""" % \
+            input = """<input class="field-control field-control--text" name="%s" id="%s" aria-labeledby="%s %s" type="text" value="%s">""" % \
                     (name, name, name + "_id", name + "_description", default or a.default)
 
         return row % input
 
+    def _form_html_cache_key(self, name, lang_name, action) -> tuple:
+        sources = [__file__, getattr(boxes, "__file__", "")]
+        version = tuple(
+            os.path.getmtime(path) for path in sources
+            if path and os.path.isfile(path)
+        )
+        return (name, lang_name, action, version)
+
     def args2html_cached(self, name, box, lang, action="", defaults={}):
         if defaults == {}:
-            key = (name, lang.info().get('language', None), action)
+            lang_name = lang.info().get('language', None)
+            key = self._form_html_cache_key(name, lang_name, action)
             if key not in self._cache:
                 self._cache[key] = list(self.args2html(name, box, lang, action, defaults))
             return self._cache[key]
@@ -260,8 +336,10 @@ class BServer:
 </div>
 <hr>
 
-<h2 style="margin: 0px 0px 0px 20px;">{_(name)}</h2>
-        <p>{_(box.__doc__) if box.__doc__ else ""}</p>
+<div class="box-intro">
+<h2>{_(name)}</h2>
+<p>{self.capitalize_description(_(box.__doc__)) if box.__doc__ else ""}</p>
+</div>
 <form id="arguments" action="{action}" method="GET" rel="nofollow">
         """]
         groupid = 0
@@ -283,7 +361,7 @@ class BServer:
         result.append(f"""
 <input type="hidden" name="language" id="language" value="{lang_name}">
 
-<p>
+<p class="form-actions">
     <button name="render" value="1" formtarget="_blank">{_("Generate")}</button>
     <button name="render" value="2" formtarget="_self">{_("Download")}</button>
     <button name="render" value="0" formtarget="_self">{_("Save to URL")}</button>
@@ -300,7 +378,7 @@ class BServer:
 
         if box.description:
             result.append(
-                markdown.markdown(_(box.description), extensions=["extra"])
+                markdown.markdown(self.capitalize_description(_(box.description)), extensions=["extra"])
                 .replace('src="static/', f'src="{self.static_url}/'))
 
         result.append(f'''<div>
@@ -482,7 +560,13 @@ class BServer:
         result = [f'  <li><a href="{url}" target="_blank" rel="noopener">{txt}</a></li>\n' for url, txt in links]
 
         if preview:
-            result.append(f'    <li class="right">{_("Preview")} <input id="preview_chk" type="checkbox" checked="checked"> </li>\n')
+            result.append(
+                f'    <li class="right">{_("Preview")} '
+                f'<label class="field-checkbox">'
+                f'<input id="preview_chk" class="field-checkbox__input" type="checkbox" checked="checked">'
+                f'<span class="field-checkbox__box" aria-hidden="true"></span>'
+                f'</label></li>\n'
+            )
 
         result.append(f'  <li class="right">{self.genHTMLLanguageSelection(lang)}  </li>\n')
         return "".join(result)
