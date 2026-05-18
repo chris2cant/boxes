@@ -269,7 +269,7 @@ class ArgparseEdgeType:
                     html.escape(e),
                 )
             )
-        title_attr = ' title="{}"'.format(html.escape(select_title)) if select_title else ""
+        title_attr = f' title="{html.escape(select_title)}"' if select_title else ""
         return '<select class="field-control field-control--select" name="{}" id="{}" aria-labelledby="{} {}" size="1"{title}>\n{options}\n</select>\n'.format(
             html.escape(name), html.escape(name), name + "_id", name + "_description",
             title=title_attr,

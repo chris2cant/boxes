@@ -86,7 +86,7 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: pytest
+        entry: bash -c 'root="$(git rev-parse --show-toplevel)"; export PATH="$root/.venv/bin:$PATH"; exec pytest'
         language: system
         types: [ python ]
         pass_filenames: false
